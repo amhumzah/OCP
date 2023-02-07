@@ -1,0 +1,37 @@
+######### System Health commands
+
+# All Pods Health
+	oc get po  -A| grep -Ev '([[:digit:]])/\1.*R' | grep -v 'Completed'
+
+## Check memory requests
+oc get pod -o custom-columns=Pod_Name:metadata.name,MemoryRequest:spec.containers[*].resources.requests.memory | more
+oc get deployment -o custom-columns=Pod_Name:metadata.name,MemoryRequest:spec.template.spec.containers[*].resources.requests.memory | more
+
+
+######### Portworx Basics
+
+# Current Version
+STORAGECLUSTER_NAME=$(oc -n kube-system get storagecluster -o jsonpath='{.items[0].metadata.name}')
+oc get stc -n kube-system $STORAGECLUSTER_NAME -o jsonpath='{.spec.image}{"\n"}'
+
+# Health
+export PX_POD=$(oc get pods -l name=portworx -n kube-system -o jsonpath='{.items[0].metadata.name}')
+oc exec $PX_POD -n kube-system -- /opt/pwx/bin/pxctl status
+
+
+#########  CP4D 4.6.2 commands
+
+
+## List all Catalog Sources and their status
+	oc get catalogsource -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,DESCRIPTION:spec.displayName,LATEST_STATES:status.connectionState.lastObservedState -A
+
+## List all Subscriptions, their State and Current version
+	oc get sub -o custom-columns=:metadata.name,:metadata.namespace,:status.state,:status.currentCSV -A
+
+## List all ClusterServiceVersions 
+	oc get csv -o custom-columns=:metadata.name,:metadata.namespace,:status.lastUpdateTime,:.spec.version,:spec.replaces,:.status.phase -A
+
+## All IBM CPD Custom Resource Definitions
+# Their are a number of variants of this command as there is not a consistent convention for the information returned for CRDs
+# Return all instances of CRDs where the CRD name contains "ibm" and "cpd". Return the default information for each
+	for i in $(oc get crd -o=custom-columns=TYPE:.kind,NAME:.metadata.name,CR_NAME:.spec.names.singular | grep ibm | grep cpd | awk '{print $2}') ; do echo $i ; oc get $i -A ; done
